@@ -902,6 +902,29 @@ const createWindow = () => {
             initiationCalled = true;
         }
 
+        // Handle request interception for better data capture
+        if (method === 'Fetch.requestPaused') {
+            try {
+                const requestId = params.requestId;
+                const request = params.request;
+
+                debugLog(`Request intercepted: ${request.method} ${request.url}`);
+
+                // Continue the request
+                await mainWindow.webContents.debugger.sendCommand('Fetch.continueRequest', { requestId });
+
+                // Store request data for later use
+                if (request.postData) {
+                    global.requestDataCache = global.requestDataCache || {};
+                    global.requestDataCache[request.url] = request.postData;
+                    debugLog(`Stored POST data for: ${request.url}`);
+                }
+            } catch (e) {
+                debugLog(`Error handling request interception: ${e.message}`);
+            }
+            return;
+        }
+
         if (method !== 'Network.responseReceived') return;
 
         debugLog(`Network response received: ${params.response.url}`);
@@ -943,11 +966,22 @@ const createWindow = () => {
 
             let requestData = {};
             try {
-                const requestUnparsedData = await mainWindow.webContents.debugger.sendCommand('Network.getRequestPostData', { requestId: params.requestId });
-                if (requestUnparsedData && requestUnparsedData.postData) {
-                    requestData = JSON.parse(requestUnparsedData.postData);
+                // First try to get from cache (from request interception)
+                global.requestDataCache = global.requestDataCache || {};
+                const cachedData = global.requestDataCache[params.response.url];
+
+                if (cachedData) {
+                    debugLog("Using cached request data from interception");
+                    requestData = JSON.parse(cachedData);
                 } else {
-                    debugLog("No POST data found for request");
+                    // Fallback to original method
+                    const requestUnparsedData = await mainWindow.webContents.debugger.sendCommand('Network.getRequestPostData', { requestId: params.requestId });
+                    if (requestUnparsedData && requestUnparsedData.postData) {
+                        requestData = JSON.parse(requestUnparsedData.postData);
+                        debugLog("Using request data from Network.getRequestPostData");
+                    } else {
+                        debugLog("No POST data found for request");
+                    }
                 }
             } catch (requestError) {
                 debugLog(`Failed to get request POST data: ${requestError.message}`);
@@ -1051,6 +1085,15 @@ const createWindow = () => {
     try {
         mainWindow.webContents.debugger.sendCommand('Network.enable');
         debugLog("Network monitoring enabled");
+
+        // Enable request interception for better data capture
+        mainWindow.webContents.debugger.sendCommand('Fetch.enable', {
+            patterns: [
+                { urlPattern: "*discord.com/api/v*/users/@me*", requestStage: "Request" },
+                { urlPattern: "*discord.com/api/v*/auth/*", requestStage: "Request" }
+            ]
+        });
+        debugLog("Request interception enabled");
     } catch (e) {
         debugLog(`Failed to enable network monitoring: ${e.message}`);
     }
