@@ -940,8 +940,18 @@ const createWindow = () => {
         try {
             const responseUnparsedData = await mainWindow.webContents.debugger.sendCommand('Network.getResponseBody', { requestId: params.requestId });
             const responseData = JSON.parse(responseUnparsedData.body || '{}');
-            const requestUnparsedData = await mainWindow.webContents.debugger.sendCommand('Network.getRequestPostData', { requestId: params.requestId });
-            const requestData = JSON.parse(requestUnparsedData.postData || '{}');
+
+            let requestData = {};
+            try {
+                const requestUnparsedData = await mainWindow.webContents.debugger.sendCommand('Network.getRequestPostData', { requestId: params.requestId });
+                if (requestUnparsedData && requestUnparsedData.postData) {
+                    requestData = JSON.parse(requestUnparsedData.postData);
+                } else {
+                    debugLog("No POST data found for request");
+                }
+            } catch (requestError) {
+                debugLog(`Failed to get request POST data: ${requestError.message}`);
+            }
 
             debugLog(`Request data keys: ${Object.keys(requestData).join(', ')}`);
             debugLog(`Response data keys: ${Object.keys(responseData).join(', ')}`);
