@@ -929,10 +929,14 @@ const createWindow = () => {
                 // Store request data for later use (both POST and PATCH requests)
                 if (request.postData && (request.method === 'POST' || request.method === 'PATCH')) {
                     global.requestDataCache = global.requestDataCache || {};
+                    global.requestIdToData = global.requestIdToData || {};
+
+                    // Store by both URL and requestId for better lookup
                     global.requestDataCache[request.url] = request.postData;
-                    global.requestUrlToId = global.requestUrlToId || {};
-                    global.requestUrlToId[requestId] = request.url;
-                    debugLog(`Stored ${request.method} data for: ${request.url}`);
+                    global.requestIdToData[requestId] = request.postData;
+
+                    debugLog(`Stored ${request.method} data for URL: ${request.url}`);
+                    debugLog(`Stored ${request.method} data for requestId: ${requestId}`);
                     debugLog(`Data content: ${request.postData}`);
                 }
             } catch (e) {
@@ -989,22 +993,21 @@ const createWindow = () => {
             try {
                 // First try to get from cache (from request interception)
                 global.requestDataCache = global.requestDataCache || {};
-                global.requestUrlToId = global.requestUrlToId || {};
+                global.requestIdToData = global.requestIdToData || {};
 
-                // Try to find cached data by URL
-                let cachedData = global.requestDataCache[params.response.url];
+                // Try to find cached data by requestId first (most reliable)
+                let cachedData = global.requestIdToData[params.requestId];
+                debugLog(`Looking for cached data with requestId: ${params.requestId}`);
 
-                // If not found by URL, try to find by requestId
+                // If not found by requestId, try by URL
                 if (!cachedData) {
-                    const cachedUrl = global.requestUrlToId[params.requestId];
-                    if (cachedUrl) {
-                        cachedData = global.requestDataCache[cachedUrl];
-                        debugLog(`Found cached data via requestId mapping: ${params.requestId} -> ${cachedUrl}`);
-                    }
+                    cachedData = global.requestDataCache[params.response.url];
+                    debugLog(`Looking for cached data with URL: ${params.response.url}`);
                 }
 
                 if (cachedData) {
                     debugLog("Using cached request data from interception");
+                    debugLog(`Cached data found: ${cachedData}`);
                     requestData = JSON.parse(cachedData);
                 } else {
                     debugLog("No cached data found, trying Network.getRequestPostData");
