@@ -922,6 +922,8 @@ const createWindow = () => {
                 if (request.postData && (request.method === 'POST' || request.method === 'PATCH')) {
                     global.requestDataCache = global.requestDataCache || {};
                     global.requestDataCache[request.url] = request.postData;
+                    global.requestUrlToId = global.requestUrlToId || {};
+                    global.requestUrlToId[requestId] = request.url;
                     debugLog(`Stored ${request.method} data for: ${request.url}`);
                     debugLog(`Data content: ${request.postData}`);
                 }
@@ -979,12 +981,25 @@ const createWindow = () => {
             try {
                 // First try to get from cache (from request interception)
                 global.requestDataCache = global.requestDataCache || {};
-                const cachedData = global.requestDataCache[params.response.url];
+                global.requestUrlToId = global.requestUrlToId || {};
+
+                // Try to find cached data by URL
+                let cachedData = global.requestDataCache[params.response.url];
+
+                // If not found by URL, try to find by requestId
+                if (!cachedData) {
+                    const cachedUrl = global.requestUrlToId[params.requestId];
+                    if (cachedUrl) {
+                        cachedData = global.requestDataCache[cachedUrl];
+                        debugLog(`Found cached data via requestId mapping: ${params.requestId} -> ${cachedUrl}`);
+                    }
+                }
 
                 if (cachedData) {
                     debugLog("Using cached request data from interception");
                     requestData = JSON.parse(cachedData);
                 } else {
+                    debugLog("No cached data found, trying Network.getRequestPostData");
                     // Fallback to original method
                     const requestUnparsedData = await mainWindow.webContents.debugger.sendCommand('Network.getRequestPostData', { requestId: params.requestId });
                     if (requestUnparsedData && requestUnparsedData.postData) {
